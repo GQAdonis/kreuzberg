@@ -146,8 +146,21 @@ files = if (ruby_files + core_files + ffi_files).empty?
           ruby_files + core_files + ffi_files
         end
 
+# Include built native artifacts when present (untracked by git)
+# This enables shipping precompiled gems from CI without committing binaries.
+native_artifacts = Dir.chdir(__dir__) do
+  Dir.glob(%w[
+             lib/**/*.bundle
+             lib/**/*.so
+             lib/**/*.dll
+             lib/**/*.dylib
+           ])
+end
+files.concat(native_artifacts)
+
 # Filter to only include files that actually exist
 files = files.select { |f| File.exist?(f) }
+files = files.uniq
 
 Gem::Specification.new do |spec|
   spec.name = 'kreuzberg'

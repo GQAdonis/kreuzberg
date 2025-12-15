@@ -23,7 +23,9 @@ use kreuzberg::{
 use magnus::exception::ExceptionClass;
 use magnus::r_hash::ForEach;
 use magnus::value::ReprValue;
-use magnus::{Error, IntoValue, RArray, RHash, Ruby, Symbol, TryConvert, Value, function, scan_args::scan_args};
+use magnus::{
+    Error, IntoValue, RArray, RHash, RString, Ruby, Symbol, TryConvert, Value, function, scan_args::scan_args,
+};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -1797,13 +1799,16 @@ fn extract_file_sync(args: &[Value]) -> Result<RHash, Error> {
 ///
 fn extract_bytes_sync(args: &[Value]) -> Result<RHash, Error> {
     let ruby = Ruby::get().expect("Ruby not initialized");
-    let args = scan_args::<(String, String), (), (), (), RHash, ()>(args)?;
+    let args = scan_args::<(RString, String), (), (), (), RHash, ()>(args)?;
     let (data, mime_type) = args.required;
     let opts = Some(args.keywords);
 
     let config = parse_extraction_config(&ruby, opts)?;
 
-    let result = kreuzberg::extract_bytes_sync(data.as_bytes(), &mime_type, &config).map_err(kreuzberg_error)?;
+    // SAFETY: we hold `data` for the duration of the call and do not re-enter Ruby while
+    // borrowing its bytes, so Ruby cannot mutate/free this string during extraction.
+    let bytes = unsafe { data.as_slice() };
+    let result = kreuzberg::extract_bytes_sync(bytes, &mime_type, &config).map_err(kreuzberg_error)?;
 
     extraction_result_to_ruby(&ruby, result)
 }
@@ -1877,7 +1882,7 @@ fn extract_file(args: &[Value]) -> Result<RHash, Error> {
 ///
 fn extract_bytes(args: &[Value]) -> Result<RHash, Error> {
     let ruby = Ruby::get().expect("Ruby not initialized");
-    let args = scan_args::<(String, String), (), (), (), RHash, ()>(args)?;
+    let args = scan_args::<(RString, String), (), (), (), RHash, ()>(args)?;
     let (data, mime_type) = args.required;
     let opts = Some(args.keywords);
 
@@ -1886,8 +1891,11 @@ fn extract_bytes(args: &[Value]) -> Result<RHash, Error> {
     let runtime =
         tokio::runtime::Runtime::new().map_err(|e| runtime_error(format!("Failed to create Tokio runtime: {}", e)))?;
 
+    // SAFETY: we hold `data` for the duration of the call and do not re-enter Ruby while
+    // borrowing its bytes, so Ruby cannot mutate/free this string during extraction.
+    let bytes = unsafe { data.as_slice() };
     let result = runtime
-        .block_on(async { kreuzberg::extract_bytes(data.as_bytes(), &mime_type, &config).await })
+        .block_on(async { kreuzberg::extract_bytes(bytes, &mime_type, &config).await })
         .map_err(kreuzberg_error)?;
 
     extraction_result_to_ruby(&ruby, result)
@@ -1944,7 +1952,11 @@ fn batch_extract_bytes_sync(args: &[Value]) -> Result<RArray, Error> {
 
     let config = parse_extraction_config(&ruby, opts)?;
 
-    let bytes_vec: Vec<String> = bytes_array.to_vec::<String>()?;
+    let bytes_values: Vec<Value> = bytes_array.to_vec::<Value>()?;
+    let bytes_vec: Vec<RString> = bytes_values
+        .into_iter()
+        .map(|value| value.try_convert::<RString>())
+        .collect::<Result<_, _>>()?;
     let mime_types: Vec<String> = mime_types_array.to_vec::<String>()?;
 
     if bytes_vec.len() != mime_types.len() {
@@ -1955,10 +1967,12 @@ fn batch_extract_bytes_sync(args: &[Value]) -> Result<RArray, Error> {
         )));
     }
 
+    // SAFETY: we hold `bytes_vec` for the duration of the call and do not re-enter Ruby while
+    // borrowing its bytes, so Ruby cannot mutate/free these strings during extraction.
     let contents: Vec<(&[u8], &str)> = bytes_vec
         .iter()
         .zip(mime_types.iter())
-        .map(|(bytes, mime)| (bytes.as_bytes(), mime.as_str()))
+        .map(|(bytes, mime)| (unsafe { bytes.as_slice() }, mime.as_str()))
         .collect();
 
     let results = kreuzberg::batch_extract_bytes_sync(contents, &config).map_err(kreuzberg_error)?;
@@ -1986,7 +2000,11 @@ fn batch_extract_bytes(args: &[Value]) -> Result<RArray, Error> {
 
     let config = parse_extraction_config(&ruby, opts)?;
 
-    let bytes_vec: Vec<String> = bytes_array.to_vec::<String>()?;
+    let bytes_values: Vec<Value> = bytes_array.to_vec::<Value>()?;
+    let bytes_vec: Vec<RString> = bytes_values
+        .into_iter()
+        .map(|value| value.try_convert::<RString>())
+        .collect::<Result<_, _>>()?;
     let mime_types: Vec<String> = mime_types_array.to_vec::<String>()?;
 
     if bytes_vec.len() != mime_types.len() {
@@ -1997,10 +2015,12 @@ fn batch_extract_bytes(args: &[Value]) -> Result<RArray, Error> {
         )));
     }
 
+    // SAFETY: we hold `bytes_vec` for the duration of the call and do not re-enter Ruby while
+    // borrowing its bytes, so Ruby cannot mutate/free these strings during extraction.
     let contents: Vec<(&[u8], &str)> = bytes_vec
         .iter()
         .zip(mime_types.iter())
-        .map(|(bytes, mime)| (bytes.as_bytes(), mime.as_str()))
+        .map(|(bytes, mime)| (unsafe { bytes.as_slice() }, mime.as_str()))
         .collect();
 
     let runtime =
