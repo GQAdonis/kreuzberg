@@ -27,11 +27,11 @@ readonly NC='\033[0m' # No Color
 
 # Utility functions
 log_info() {
-	echo -e "${GREEN}[INFO]${NC} $*"
+	echo -e "${GREEN}[INFO]${NC} $*" >&2
 }
 
 log_warn() {
-	echo -e "${YELLOW}[WARN]${NC} $*"
+	echo -e "${YELLOW}[WARN]${NC} $*" >&2
 }
 
 log_error() {
@@ -71,9 +71,7 @@ detect_arch() {
 download_pdfium() {
 	local version="$1"
 	local arch="$2"
-	local tmpdir
-	tmpdir="$(mktemp -d)"
-	trap '[[ -n "${tmpdir-}" ]] && rm -rf "${tmpdir-}"' EXIT
+	local tmpdir="${3:?tmpdir required}"
 
 	local url="https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/${version}/pdfium-mac-${arch}.tgz"
 	local archive="$tmpdir/pdfium-mac-${arch}.tgz"
@@ -290,8 +288,12 @@ main() {
 	setup_directories "$PREFIX"
 
 	# Download and extract PDFium
+	local tmpdir
+	tmpdir="$(mktemp -d)"
+	trap '[[ -n "${tmpdir-}" ]] && rm -rf "${tmpdir-}"' EXIT
+
 	local extract_dir
-	extract_dir="$(download_pdfium "$PDFIUM_VERSION" "$arch")"
+	extract_dir="$(download_pdfium "$PDFIUM_VERSION" "$arch" "$tmpdir")"
 
 	# Install components
 	install_library "$extract_dir" "$PREFIX"
