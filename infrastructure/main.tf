@@ -29,7 +29,7 @@ module "github_actions_runner" {
 
   # Node pool configuration (Frankfurt zones)
   zones          = ["europe-west3-a", "europe-west3-b"]
-  machine_type   = "n2-standard-4"
-  min_node_count = 2
-  max_node_count = 16
+  machine_type   = "e2-medium" # 2 vCPUs, 4GB RAM - fits within quota
+  min_node_count = 1
+  max_node_count = 4
 }
