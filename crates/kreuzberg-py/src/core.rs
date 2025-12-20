@@ -160,10 +160,11 @@ pub fn batch_extract_files_sync(
     let results =
         Python::detach(py, || kreuzberg::batch_extract_file_sync(path_strings, &rust_config)).map_err(to_py_err)?;
 
-    let list = PyList::empty(py);
-    for result in results {
-        list.append(ExtractionResult::from_rust(result, py)?)?;
-    }
+    let converted: PyResult<Vec<_>> = results
+        .into_iter()
+        .map(|result| ExtractionResult::from_rust(result, py))
+        .collect();
+    let list = PyList::new(py, converted?)?;
     Ok(list.unbind())
 }
 
@@ -214,10 +215,11 @@ pub fn batch_extract_bytes_sync(
     let results =
         Python::detach(py, || kreuzberg::batch_extract_bytes_sync(contents, &rust_config)).map_err(to_py_err)?;
 
-    let list = PyList::empty(py);
-    for result in results {
-        list.append(ExtractionResult::from_rust(result, py)?)?;
-    }
+    let converted: PyResult<Vec<_>> = results
+        .into_iter()
+        .map(|result| ExtractionResult::from_rust(result, py))
+        .collect();
+    let list = PyList::new(py, converted?)?;
     Ok(list.unbind())
 }
 
@@ -352,10 +354,11 @@ pub fn batch_extract_files<'py>(
             .map_err(to_py_err)?;
 
         Python::attach(|py| {
-            let list = PyList::empty(py);
-            for result in results {
-                list.append(ExtractionResult::from_rust(result, py)?)?;
-            }
+            let converted: PyResult<Vec<_>> = results
+                .into_iter()
+                .map(|result| ExtractionResult::from_rust(result, py))
+                .collect();
+            let list = PyList::new(py, converted?)?;
             Ok(list.unbind())
         })
     })
@@ -412,10 +415,11 @@ pub fn batch_extract_bytes<'py>(
             .map_err(to_py_err)?;
 
         Python::attach(|py| {
-            let list = PyList::empty(py);
-            for result in results {
-                list.append(ExtractionResult::from_rust(result, py)?)?;
-            }
+            let converted: PyResult<Vec<_>> = results
+                .into_iter()
+                .map(|result| ExtractionResult::from_rust(result, py))
+                .collect();
+            let list = PyList::new(py, converted?)?;
             Ok(list.unbind())
         })
     })

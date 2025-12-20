@@ -320,6 +320,8 @@ pub struct PythonOcrBackend {
     name: String,
     /// Cached supported languages
     supported_languages: Vec<String>,
+    /// Cached async flag for process_image method
+    process_image_is_async: bool,
 }
 
 impl PythonOcrBackend {
@@ -358,10 +360,16 @@ impl PythonOcrBackend {
             ));
         }
 
+        let process_image_is_async = obj
+            .getattr("process_image")
+            .and_then(|m| m.hasattr("__await__"))
+            .unwrap_or(false);
+
         Ok(Self {
             python_obj,
             name,
             supported_languages,
+            process_image_is_async,
         })
     }
 }
@@ -418,14 +426,7 @@ impl OcrBackend for PythonOcrBackend {
         let language = config.language.clone();
         let backend_name = self.name.clone();
 
-        let is_async = Python::attach(|py| {
-            let obj = self.python_obj.bind(py);
-            obj.getattr("process_image")
-                .and_then(|method| method.hasattr("__await__"))
-                .unwrap_or(false)
-        });
-
-        if is_async {
+        if self.process_image_is_async {
             let python_obj = Python::attach(|py| self.python_obj.clone_ref(py));
 
             let result = Python::attach(|py| {
