@@ -10,7 +10,7 @@ runs:
       with:
         path: |
           /home/runner/.cache/openssl-build
-        key: openssl-${{ runner.os }}-${{ hashFiles('/usr/bin/pkg-config', '/usr/bin/gcc') }}-v2
+        key: openssl-${{ runner.os }}-${{ runner.arch }}-v2
         restore-keys: |
           openssl-${{ runner.os }}-
 
@@ -30,7 +30,7 @@ runs:
       id: cache-macos
       with:
         path: /usr/local/opt/openssl@3/
-        key: openssl-${{ runner.os }}-${{ hashFiles('/usr/bin/gcc') }}-v2
+        key: openssl-${{ runner.os }}-${{ runner.arch }}-v2
         restore-keys: |
           openssl-${{ runner.os }}-
 

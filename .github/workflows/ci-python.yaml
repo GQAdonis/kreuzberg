@@ -60,11 +60,6 @@ jobs:
     name: Python Build + Smoke (${{ matrix.target }})
     if: ${{ github.actor != 'dependabot[bot]' }}
     timeout-minutes: 120
-    env:
-      RUSTC_WRAPPER: ""
-      CARGO_BUILD_RUSTC_WRAPPER: ""
-      SCCACHE_GHA_ENABLED: "false"
-      SCCACHE_PATH: ""
     strategy:
       fail-fast: true
       matrix:
@@ -141,15 +136,10 @@ jobs:
 
       - name: Build Python wheels
         uses: PyO3/maturin-action@v1
-        env:
-          CARGO_BUILD_RUSTC_WRAPPER: ""
-          SCCACHE_GHA_ENABLED: "false"
-          RUSTC_WRAPPER: ""
         with:
           working-directory: packages/python
           command: build
           args: --release --strip --out ../../target/wheels
-          sccache: 'false'
           manylinux: off
 
       - name: Upload wheels

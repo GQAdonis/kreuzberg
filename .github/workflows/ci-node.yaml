@@ -130,9 +130,6 @@ jobs:
       - name: Build Node bindings
         shell: bash
         run: scripts/ci/node/build-napi.sh ${{ matrix.target }}
-        env:
-          RUSTC_WRAPPER: ''
-          SCCACHE_GHA_ENABLED: 'false'
 
       - name: Verify TypeScript build artifacts
         shell: bash

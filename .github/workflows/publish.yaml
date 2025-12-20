@@ -461,7 +461,7 @@ jobs:
           target: ${{ matrix.rust_target }}
           manylinux: ${{ matrix.manylinux }}
           working-directory: packages/python
-          sccache: ${{ steps.tesseract-cache.outputs.cache-enabled }}
+          sccache: true
           docker-options: ${{ steps.tesseract-cache.outputs.docker-options }}
           before-script-linux: |
             set -euo pipefail
@@ -485,7 +485,7 @@ jobs:
           args: --release -i python${{ matrix.python }} --out ../../target/wheels ${{ matrix.extra_args }}
           target: ${{ matrix.rust_target }}
           working-directory: packages/python
-          sccache: ${{ steps.tesseract-cache.outputs.cache-enabled }}
+          sccache: true
 
       - name: Setup Python (macOS)
         if: matrix.label == 'macos-arm64'
