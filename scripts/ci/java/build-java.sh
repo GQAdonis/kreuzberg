@@ -33,5 +33,5 @@ fi
 
 echo "=== Building Java bindings ==="
 cd "$REPO_ROOT/packages/java"
-mvn clean package -DskipTests
+mvn -e clean package -DskipTests
 echo "Java build complete"

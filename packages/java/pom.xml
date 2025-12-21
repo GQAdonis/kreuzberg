@@ -99,7 +99,7 @@
                     <!-- Compile benchmark helper script -->
                     <execution>
                         <id>compile-benchmark-helper</id>
-                        <phase>compile</phase>
+                        <phase>process-classes</phase>
                         <goals>
                             <goal>compile</goal>
                         </goals>

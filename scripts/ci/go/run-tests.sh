@@ -42,7 +42,11 @@ fi
 
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then
 	# Windows-specific setup
-	setup_go_paths "$REPO_ROOT"
+	# In GitHub Actions, CGO environment is already configured by setup-go-cgo-env action
+	# Only call setup_go_paths for local development
+	if [[ -z "${GITHUB_ENV:-}" ]]; then
+		setup_go_paths "$REPO_ROOT"
+	fi
 
 	echo "=========================================="
 	echo "Windows Test Configuration"

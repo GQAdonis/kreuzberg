@@ -276,11 +276,15 @@ pub fn process_html(
         let mut img_config = LibInlineImageConfig::new(max_image_size);
         img_config.filename_prefix = Some("inline-image".to_string());
 
+        #[cfg(not(target_arch = "wasm32"))]
         let extraction = if html_requires_large_stack(html.len()) {
             convert_inline_images_with_large_stack(html.to_string(), options, img_config)?
         } else {
             convert_inline_images_with_options(html, options, img_config)?
         };
+
+        #[cfg(target_arch = "wasm32")]
+        let extraction = convert_inline_images_with_options(html, options, img_config)?;
 
         let images = extraction
             .inline_images
