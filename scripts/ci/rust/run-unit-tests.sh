@@ -74,12 +74,18 @@ if ! {
 	cargo test -p kreuzberg --features full --verbose
 
 	echo "=== cargo test --workspace (all features, excluding kreuzberg) ==="
+	extra_excludes=()
+	if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then
+		# tikv-jemalloc-sys fails to build on Windows without a full autotools toolchain.
+		extra_excludes+=(--exclude benchmark-harness)
+	fi
 	cargo test \
 		--workspace \
 		--exclude kreuzberg \
 		--exclude kreuzberg-e2e-generator \
 		--exclude kreuzberg-py \
 		--exclude kreuzberg-node \
+		"${extra_excludes[@]}" \
 		--all-features \
 		--verbose
 } 2>&1 | tee "$TEST_LOG"; then
