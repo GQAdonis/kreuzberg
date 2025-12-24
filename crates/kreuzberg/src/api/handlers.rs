@@ -24,11 +24,12 @@ use super::{
 ///
 /// # Size Limits
 ///
-/// Request body size limits are enforced at the router layer via `RequestBodyLimitLayer`.
+/// Request body size limits are enforced at the router layer via `DefaultBodyLimit` and `RequestBodyLimitLayer`.
 /// Default limits:
-/// - Total request body: 100 MB (all files + form data combined)
-/// - Individual multipart fields: Controlled by Axum's default multipart limits
+/// - Total request body: 10 GB (all files + form data combined)
+/// - Individual multipart fields: 10 GB (controlled by Axum's `DefaultBodyLimit`)
 ///
+/// Limits can be configured via environment variables or programmatically when creating the router.
 /// If a request exceeds the size limit, it will be rejected with HTTP 413 (Payload Too Large).
 ///
 /// The server's default config (loaded from kreuzberg.toml/yaml/json via discovery)

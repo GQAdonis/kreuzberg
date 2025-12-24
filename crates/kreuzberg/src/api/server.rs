@@ -7,6 +7,7 @@ use std::{
 
 use axum::{
     Router,
+    extract::DefaultBodyLimit,
     routing::{delete, get, post},
 };
 use tower_http::{
@@ -24,51 +25,81 @@ use super::{
 
 /// Parse size limits from environment variables.
 ///
-/// Reads `KREUZBERG_MAX_UPLOAD_SIZE_MB` to configure upload size limits.
-/// Falls back to default (100 MB) if not set or invalid.
+/// Reads environment variables in the following order of preference:
+/// 1. `KREUZBERG_MAX_REQUEST_BODY_BYTES` - Maximum total request body size (in bytes)
+/// 2. `KREUZBERG_MAX_MULTIPART_FIELD_BYTES` - Maximum individual multipart field size (in bytes)
+/// 3. `KREUZBERG_MAX_UPLOAD_SIZE_MB` - (Legacy) Maximum upload size in MB (applies to both limits)
+///
+/// Falls back to default (10 GB) if not set or invalid.
+///
+/// # Examples
+///
+/// ```bash
+/// # Method 1: Set limits in bytes
+/// export KREUZBERG_MAX_REQUEST_BODY_BYTES=10737418240  # 10 GB
+/// export KREUZBERG_MAX_MULTIPART_FIELD_BYTES=5368709120  # 5 GB
+///
+/// # Method 2: Set limits in MB (legacy, backward compatible)
+/// export KREUZBERG_MAX_UPLOAD_SIZE_MB=10000
+/// ```
 fn parse_size_limits_from_env() -> ApiSizeLimits {
-    match std::env::var("KREUZBERG_MAX_UPLOAD_SIZE_MB") {
-        Ok(value) => match value.parse::<usize>() {
-            Ok(mb) if mb > 0 => {
+    const DEFAULT_10GB_MB: usize = 10 * 1024; // 10000 MB
+
+    // Try the modern byte-based environment variables first
+    if let Ok(value) = std::env::var("KREUZBERG_MAX_REQUEST_BODY_BYTES") {
+        if let Ok(bytes) = value.parse::<usize>() {
+            if bytes > 0 {
+                let multipart_bytes = std::env::var("KREUZBERG_MAX_MULTIPART_FIELD_BYTES")
+                    .ok()
+                    .and_then(|v| v.parse::<usize>().ok())
+                    .unwrap_or(bytes);
+
                 tracing::info!(
-                    "Upload size limit configured from environment: {} MB ({} bytes)",
+                    "Upload size limits configured from environment: request_body={} bytes ({:.1} GB), multipart_field={} bytes ({:.1} GB)",
+                    bytes,
+                    bytes as f64 / (1024.0 * 1024.0 * 1024.0),
+                    multipart_bytes,
+                    multipart_bytes as f64 / (1024.0 * 1024.0 * 1024.0)
+                );
+
+                return ApiSizeLimits::new(bytes, multipart_bytes);
+            }
+        } else {
+            tracing::warn!(
+                "Failed to parse KREUZBERG_MAX_REQUEST_BODY_BYTES='{}', must be a valid usize",
+                value
+            );
+        }
+    }
+
+    // Fall back to the legacy MB-based environment variable
+    if let Ok(value) = std::env::var("KREUZBERG_MAX_UPLOAD_SIZE_MB") {
+        if let Ok(mb) = value.parse::<usize>() {
+            if mb > 0 {
+                tracing::info!(
+                    "Upload size limit configured from environment (legacy): {} MB ({} bytes)",
                     mb,
                     mb * 1024 * 1024
                 );
-                ApiSizeLimits::from_mb(mb, mb)
+                return ApiSizeLimits::from_mb(mb, mb);
+            } else {
+                tracing::warn!("Invalid KREUZBERG_MAX_UPLOAD_SIZE_MB value (must be > 0)");
             }
-            Ok(_) => {
-                tracing::warn!("Invalid KREUZBERG_MAX_UPLOAD_SIZE_MB value (must be > 0), using default 100 MB");
-                let limits = ApiSizeLimits::default();
-                tracing::info!(
-                    "Upload size limit: 100 MB (default, {} bytes)",
-                    limits.max_request_body_bytes
-                );
-                limits
-            }
-            Err(e) => {
-                tracing::warn!(
-                    "Failed to parse KREUZBERG_MAX_UPLOAD_SIZE_MB='{}': {}, using default 100 MB",
-                    value,
-                    e
-                );
-                let limits = ApiSizeLimits::default();
-                tracing::info!(
-                    "Upload size limit: 100 MB (default, {} bytes)",
-                    limits.max_request_body_bytes
-                );
-                limits
-            }
-        },
-        Err(_) => {
-            let limits = ApiSizeLimits::default();
-            tracing::info!(
-                "Upload size limit: 100 MB (default, {} bytes)",
-                limits.max_request_body_bytes
+        } else {
+            tracing::warn!(
+                "Failed to parse KREUZBERG_MAX_UPLOAD_SIZE_MB='{}', must be a valid usize",
+                value
             );
-            limits
         }
     }
+
+    // Use default 10 GB limits
+    let limits = ApiSizeLimits::from_mb(DEFAULT_10GB_MB, DEFAULT_10GB_MB);
+    tracing::info!(
+        "Upload size limit: 10 GB (default, {} bytes) - Configure with KREUZBERG_MAX_REQUEST_BODY_BYTES or KREUZBERG_MAX_UPLOAD_SIZE_MB",
+        limits.max_request_body_bytes
+    );
+    limits
 }
 
 /// Create the API router with all routes configured.
@@ -171,6 +202,7 @@ pub fn create_router_with_limits(config: ExtractionConfig, limits: ApiSizeLimits
         .route("/info", get(info_handler))
         .route("/cache/stats", get(cache_stats_handler))
         .route("/cache/clear", delete(cache_clear_handler))
+        .layer(DefaultBodyLimit::max(limits.max_request_body_bytes))
         .layer(RequestBodyLimitLayer::new(limits.max_request_body_bytes))
         .layer(cors_layer)
         .layer(TraceLayer::new_for_http())
@@ -223,8 +255,13 @@ pub fn create_router_with_limits(config: ExtractionConfig, limits: ApiSizeLimits
 /// # Production: set to comma-separated list of allowed origins
 /// export KREUZBERG_CORS_ORIGINS="https://app.example.com,https://api.example.com"
 ///
-/// # Upload size limit (default: 100 MB)
-/// export KREUZBERG_MAX_UPLOAD_SIZE_MB=200
+/// # Upload size limits (default: 10 GB)
+/// # Modern approach (in bytes):
+/// export KREUZBERG_MAX_REQUEST_BODY_BYTES=10737418240     # 10 GB
+/// export KREUZBERG_MAX_MULTIPART_FIELD_BYTES=5368709120   # 5 GB per file
+///
+/// # Legacy approach (in MB, applies to both limits):
+/// export KREUZBERG_MAX_UPLOAD_SIZE_MB=10000  # 10 GB
 ///
 /// python -m kreuzberg.api
 /// ```
@@ -247,7 +284,7 @@ pub async fn serve(host: impl AsRef<str>, port: u16) -> Result<()> {
 
 /// Start the API server with explicit config.
 ///
-/// Uses default size limits (100 MB). For custom limits, use `serve_with_config_and_limits`.
+/// Uses default size limits (10 GB). For custom limits, use `serve_with_config_and_limits`.
 ///
 /// # Arguments
 ///
@@ -270,7 +307,7 @@ pub async fn serve(host: impl AsRef<str>, port: u16) -> Result<()> {
 pub async fn serve_with_config(host: impl AsRef<str>, port: u16, config: ExtractionConfig) -> Result<()> {
     let limits = ApiSizeLimits::default();
     tracing::info!(
-        "Upload size limit: 100 MB (default, {} bytes)",
+        "Upload size limit: 10 GB (default, {} bytes)",
         limits.max_request_body_bytes
     );
     serve_with_config_and_limits(host, port, config, limits).await
@@ -335,6 +372,7 @@ pub async fn serve_default() -> Result<()> {
 }
 
 #[cfg(test)]
+#[allow(unsafe_code)]
 mod tests {
     use super::*;
 
@@ -349,5 +387,135 @@ mod tests {
         let config = ExtractionConfig::default();
         let router = create_router(config);
         assert!(size_of_val(&router) > 0);
+    }
+
+    #[test]
+    fn test_parse_size_limits_default_10gb() {
+        // When no environment variables are set, should default to 10 GB
+        unsafe {
+            std::env::remove_var("KREUZBERG_MAX_REQUEST_BODY_BYTES");
+            std::env::remove_var("KREUZBERG_MAX_MULTIPART_FIELD_BYTES");
+            std::env::remove_var("KREUZBERG_MAX_UPLOAD_SIZE_MB");
+        }
+
+        let limits = parse_size_limits_from_env();
+        assert_eq!(limits.max_request_body_bytes, 10 * 1024 * 1024 * 1024);
+        assert_eq!(limits.max_multipart_field_bytes, 10 * 1024 * 1024 * 1024);
+    }
+
+    #[test]
+    fn test_parse_size_limits_from_bytes_env_vars() {
+        // When modern byte-based env vars are set, should use those
+        unsafe {
+            std::env::set_var("KREUZBERG_MAX_REQUEST_BODY_BYTES", "5368709120"); // 5 GB
+            std::env::set_var("KREUZBERG_MAX_MULTIPART_FIELD_BYTES", "2684354560"); // 2.5 GB
+            std::env::remove_var("KREUZBERG_MAX_UPLOAD_SIZE_MB");
+        }
+
+        let limits = parse_size_limits_from_env();
+        assert_eq!(limits.max_request_body_bytes, 5 * 1024 * 1024 * 1024);
+        assert_eq!(limits.max_multipart_field_bytes, 2_684_354_560);
+
+        // Cleanup
+        unsafe {
+            std::env::remove_var("KREUZBERG_MAX_REQUEST_BODY_BYTES");
+            std::env::remove_var("KREUZBERG_MAX_MULTIPART_FIELD_BYTES");
+        }
+    }
+
+    #[test]
+    fn test_parse_size_limits_bytes_env_var_only() {
+        // When only request body is set, multipart should use same value
+        unsafe {
+            std::env::set_var("KREUZBERG_MAX_REQUEST_BODY_BYTES", "1073741824"); // 1 GB
+            std::env::remove_var("KREUZBERG_MAX_MULTIPART_FIELD_BYTES");
+            std::env::remove_var("KREUZBERG_MAX_UPLOAD_SIZE_MB");
+        }
+
+        let limits = parse_size_limits_from_env();
+        assert_eq!(limits.max_request_body_bytes, 1 * 1024 * 1024 * 1024);
+        assert_eq!(limits.max_multipart_field_bytes, 1 * 1024 * 1024 * 1024);
+
+        // Cleanup
+        unsafe {
+            std::env::remove_var("KREUZBERG_MAX_REQUEST_BODY_BYTES");
+        }
+    }
+
+    #[test]
+    fn test_parse_size_limits_from_legacy_mb_env_var() {
+        // When legacy MB env var is set, should use that (backward compatibility)
+        unsafe {
+            std::env::remove_var("KREUZBERG_MAX_REQUEST_BODY_BYTES");
+            std::env::remove_var("KREUZBERG_MAX_MULTIPART_FIELD_BYTES");
+            std::env::set_var("KREUZBERG_MAX_UPLOAD_SIZE_MB", "5000"); // 5 GB
+        }
+
+        let limits = parse_size_limits_from_env();
+        assert_eq!(limits.max_request_body_bytes, 5000 * 1024 * 1024);
+        assert_eq!(limits.max_multipart_field_bytes, 5000 * 1024 * 1024);
+
+        // Cleanup
+        unsafe {
+            std::env::remove_var("KREUZBERG_MAX_UPLOAD_SIZE_MB");
+        }
+    }
+
+    #[test]
+    fn test_parse_size_limits_invalid_bytes_env_var() {
+        // When invalid byte value is provided, should fallback to legacy then default
+        unsafe {
+            std::env::set_var("KREUZBERG_MAX_REQUEST_BODY_BYTES", "not a number");
+            std::env::remove_var("KREUZBERG_MAX_MULTIPART_FIELD_BYTES");
+            std::env::remove_var("KREUZBERG_MAX_UPLOAD_SIZE_MB");
+        }
+
+        let limits = parse_size_limits_from_env();
+        // Should use default 10 GB since both modern and legacy env vars are missing/invalid
+        assert_eq!(limits.max_request_body_bytes, 10 * 1024 * 1024 * 1024);
+
+        // Cleanup
+        unsafe {
+            std::env::remove_var("KREUZBERG_MAX_REQUEST_BODY_BYTES");
+        }
+    }
+
+    #[test]
+    fn test_parse_size_limits_zero_bytes_env_var() {
+        // When zero is provided, should be treated as invalid and use default
+        unsafe {
+            std::env::set_var("KREUZBERG_MAX_REQUEST_BODY_BYTES", "0");
+            std::env::remove_var("KREUZBERG_MAX_MULTIPART_FIELD_BYTES");
+            std::env::remove_var("KREUZBERG_MAX_UPLOAD_SIZE_MB");
+        }
+
+        let limits = parse_size_limits_from_env();
+        // Should use default 10 GB since 0 is invalid
+        assert_eq!(limits.max_request_body_bytes, 10 * 1024 * 1024 * 1024);
+
+        // Cleanup
+        unsafe {
+            std::env::remove_var("KREUZBERG_MAX_REQUEST_BODY_BYTES");
+        }
+    }
+
+    #[test]
+    fn test_parse_size_limits_bytes_env_var_precedence() {
+        // Modern byte-based vars should take precedence over legacy MB var
+        unsafe {
+            std::env::set_var("KREUZBERG_MAX_REQUEST_BODY_BYTES", "1073741824"); // 1 GB
+            std::env::remove_var("KREUZBERG_MAX_MULTIPART_FIELD_BYTES");
+            std::env::set_var("KREUZBERG_MAX_UPLOAD_SIZE_MB", "5000"); // 5 GB (should be ignored)
+        }
+
+        let limits = parse_size_limits_from_env();
+        assert_eq!(limits.max_request_body_bytes, 1 * 1024 * 1024 * 1024);
+        assert_ne!(limits.max_request_body_bytes, 5000 * 1024 * 1024);
+
+        // Cleanup
+        unsafe {
+            std::env::remove_var("KREUZBERG_MAX_REQUEST_BODY_BYTES");
+            std::env::remove_var("KREUZBERG_MAX_UPLOAD_SIZE_MB");
+        }
     }
 }

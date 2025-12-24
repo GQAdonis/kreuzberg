@@ -232,6 +232,8 @@ See [Configuration Guide](configuration.md) for all options.
 KREUZBERG_MAX_UPLOAD_SIZE_MB=200  # Max upload size in MB (default: 100)
 ```
 
+For detailed configuration options, memory considerations, and performance tuning for large files, see the [File Size Limits Reference](../reference/file-size-limits.md).
+
 **CORS Configuration:**
 
 ```bash title="Terminal"
@@ -789,6 +791,13 @@ export KREUZBERG_MAX_UPLOAD_SIZE_MB=200
 # Configuration for large scans, archives, and high-resolution images
 export KREUZBERG_MAX_UPLOAD_SIZE_MB=1000
 ```
+
+See the [File Size Limits Reference](../reference/file-size-limits.md) for comprehensive documentation including:
+- Memory impact calculations
+- Reverse proxy configuration
+- Error handling and troubleshooting
+- Client-side validation examples
+- Best practices for large file processing
 
 ### Concurrent Requests
 

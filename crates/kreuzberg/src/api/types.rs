@@ -8,31 +8,44 @@ use crate::{ExtractionConfig, types::ExtractionResult};
 /// API server size limit configuration.
 ///
 /// Controls maximum sizes for request bodies and multipart uploads.
-/// Default limits are designed for typical document processing workloads.
+/// Default limits are set to 10 GB to accommodate large document processing workloads.
 ///
 /// # Default Values
 ///
-/// - `max_request_body_bytes`: 100 MB (104,857,600 bytes)
-/// - `max_multipart_field_bytes`: 100 MB (104,857,600 bytes)
+/// - `max_request_body_bytes`: 10 GB (10,737,418,240 bytes)
+/// - `max_multipart_field_bytes`: 10 GB (10,737,418,240 bytes)
+///
+/// # Configuration via Environment Variables
+///
+/// You can override the defaults using these environment variables:
+///
+/// ```bash
+/// # Modern approach (in bytes):
+/// export KREUZBERG_MAX_REQUEST_BODY_BYTES=10737418240    # 10 GB
+/// export KREUZBERG_MAX_MULTIPART_FIELD_BYTES=5368709120  # 5 GB
+///
+/// # Legacy approach (in MB, applies to both limits):
+/// export KREUZBERG_MAX_UPLOAD_SIZE_MB=10000  # 10 GB
+/// ```
 ///
 /// # Examples
 ///
 /// ```
 /// use kreuzberg::api::ApiSizeLimits;
 ///
-/// // Default limits (100 MB)
+/// // Default limits (10 GB)
 /// let limits = ApiSizeLimits::default();
 ///
-/// // Custom limits (50 MB for both)
+/// // Custom limits (5 GB for both)
 /// let limits = ApiSizeLimits {
-///     max_request_body_bytes: 50 * 1024 * 1024,
-///     max_multipart_field_bytes: 50 * 1024 * 1024,
+///     max_request_body_bytes: 5 * 1024 * 1024 * 1024,
+///     max_multipart_field_bytes: 5 * 1024 * 1024 * 1024,
 /// };
 ///
-/// // Very large documents (500 MB)
+/// // Very large documents (100 GB total, 50 GB per file)
 /// let limits = ApiSizeLimits {
-///     max_request_body_bytes: 500 * 1024 * 1024,
-///     max_multipart_field_bytes: 500 * 1024 * 1024,
+///     max_request_body_bytes: 100 * 1024 * 1024 * 1024,
+///     max_multipart_field_bytes: 50 * 1024 * 1024 * 1024,
 /// };
 /// ```
 #[derive(Debug, Clone, Copy)]
@@ -40,21 +53,21 @@ pub struct ApiSizeLimits {
     /// Maximum size of the entire request body in bytes.
     ///
     /// This applies to the total size of all uploaded files and form data
-    /// in a single request. Default: 100 MB (104,857,600 bytes).
+    /// in a single request. Default: 10 GB (10,737,418,240 bytes).
     pub max_request_body_bytes: usize,
 
     /// Maximum size of a single multipart field in bytes.
     ///
     /// This applies to individual files in a multipart upload.
-    /// Default: 100 MB (104,857,600 bytes).
+    /// Default: 10 GB (10,737,418,240 bytes).
     pub max_multipart_field_bytes: usize,
 }
 
 impl Default for ApiSizeLimits {
     fn default() -> Self {
         Self {
-            max_request_body_bytes: 100 * 1024 * 1024,
-            max_multipart_field_bytes: 100 * 1024 * 1024,
+            max_request_body_bytes: 10 * 1024 * 1024 * 1024,
+            max_multipart_field_bytes: 10 * 1024 * 1024 * 1024,
         }
     }
 }

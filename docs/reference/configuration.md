@@ -889,8 +889,176 @@ For complete working examples, see the [examples directory](https://github.com/k
 
 ---
 
+## ApiSizeLimits
+
+Configuration for API server request and file upload size limits.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `max_request_body_bytes` | `int` | `104857600` | Maximum size of entire request body in bytes (100 MB) |
+| `max_multipart_field_bytes` | `int` | `104857600` | Maximum size of individual file in multipart upload in bytes (100 MB) |
+
+### About Size Limits
+
+Size limits protect your server from resource exhaustion and memory spikes. Both limits default to 100 MB, suitable for typical document processing workloads.
+
+**Default Configuration:**
+- Total request body: 100 MB (104,857,600 bytes)
+- Individual file: 100 MB (104,857,600 bytes)
+
+**Environment Variable Configuration:**
+
+```bash title="Terminal"
+# Set both limits to 200 MB via environment variable
+export KREUZBERG_MAX_UPLOAD_SIZE_MB=200
+kreuzberg serve -H 0.0.0.0 -p 8000
+```
+
+### Example
+
+=== "C#"
+
+    ```csharp
+    using Kreuzberg;
+    using Kreuzberg.Api;
+
+    // Default limits (100 MB)
+    var limits = new ApiSizeLimits();
+
+    // Custom limits (200 MB for both)
+    var customLimits = ApiSizeLimits.FromMB(200, 200);
+
+    // Or specify byte values directly
+    var customLimits2 = new ApiSizeLimits
+    {
+        MaxRequestBodyBytes = 200 * 1024 * 1024,
+        MaxMultipartFieldBytes = 200 * 1024 * 1024
+    };
+    ```
+
+=== "Go"
+
+    ```go
+    import "kreuzberg"
+
+    // Default limits (100 MB)
+    limits := kreuzberg.NewApiSizeLimits(
+        100 * 1024 * 1024,
+        100 * 1024 * 1024,
+    )
+
+    // Or use convenience method
+    limits := kreuzberg.ApiSizeLimitsFromMB(200, 200)
+    ```
+
+=== "Java"
+
+    ```java
+    import com.kreuzberg.api.ApiSizeLimits;
+
+    // Default limits (100 MB)
+    ApiSizeLimits limits = new ApiSizeLimits();
+
+    // Custom limits via convenience method
+    ApiSizeLimits limits = ApiSizeLimits.fromMB(200, 200);
+
+    // Or specify byte values
+    ApiSizeLimits limits = new ApiSizeLimits(
+        200 * 1024 * 1024,
+        200 * 1024 * 1024
+    );
+    ```
+
+=== "Python"
+
+    ```python
+    from kreuzberg.api import ApiSizeLimits
+
+    # Default limits (100 MB)
+    limits = ApiSizeLimits()
+
+    # Custom limits via convenience method
+    limits = ApiSizeLimits.from_mb(200, 200)
+
+    # Or specify byte values
+    limits = ApiSizeLimits(
+        max_request_body_bytes=200 * 1024 * 1024,
+        max_multipart_field_bytes=200 * 1024 * 1024
+    )
+    ```
+
+=== "Ruby"
+
+    ```ruby
+    require 'kreuzberg'
+
+    # Default limits (100 MB)
+    limits = Kreuzberg::Api::ApiSizeLimits.new
+
+    # Custom limits via convenience method
+    limits = Kreuzberg::Api::ApiSizeLimits.from_mb(200, 200)
+
+    # Or specify byte values
+    limits = Kreuzberg::Api::ApiSizeLimits.new(
+      max_request_body_bytes: 200 * 1024 * 1024,
+      max_multipart_field_bytes: 200 * 1024 * 1024
+    )
+    ```
+
+=== "Rust"
+
+    ```rust
+    use kreuzberg::api::ApiSizeLimits;
+
+    // Default limits (100 MB)
+    let limits = ApiSizeLimits::default();
+
+    // Custom limits via convenience method
+    let limits = ApiSizeLimits::from_mb(200, 200);
+
+    // Or specify byte values
+    let limits = ApiSizeLimits::new(
+        200 * 1024 * 1024,  // max_request_body_bytes
+        200 * 1024 * 1024,  // max_multipart_field_bytes
+    );
+    ```
+
+=== "TypeScript"
+
+    ```typescript
+    import { ApiSizeLimits } from 'kreuzberg';
+
+    // Default limits (100 MB)
+    const limits = new ApiSizeLimits();
+
+    // Custom limits via convenience method
+    const limits = ApiSizeLimits.fromMb(200, 200);
+
+    // Or specify byte values
+    const limits = new ApiSizeLimits({
+        maxRequestBodyBytes: 200 * 1024 * 1024,
+        maxMultipartFieldBytes: 200 * 1024 * 1024
+    });
+    ```
+
+### Configuration Scenarios
+
+| Use Case | Recommended Limit | Rationale |
+|----------|------------------|-----------|
+| Small documents (standard PDFs, Office files) | 100 MB (default) | Optimal for typical business documents |
+| Medium documents (large scans, batches) | 200 MB | Good balance for batching without excessive memory |
+| Large documents (archives, high-res scans) | 500-1000 MB | Suitable for specialized workflows with adequate RAM |
+| Development/testing | 50 MB | Conservative limit to catch issues early |
+| Memory-constrained environments | 50 MB | Prevents out-of-memory errors on limited systems |
+
+For comprehensive documentation including memory impact calculations, reverse proxy configuration, and troubleshooting, see the [File Size Limits Reference](./file-size-limits.md).
+
+---
+
 ## Related Documentation
 
 - [Configuration Guide](../guides/configuration.md) - Usage guide with examples
+- [API Server Guide](../guides/api-server.md) - HTTP API server setup and deployment
+- [File Size Limits Reference](./file-size-limits.md) - Complete size limits documentation with performance tuning
 - [OCR Guide](../guides/ocr.md) - OCR-specific configuration and troubleshooting
 - [Examples Directory](https://github.com/kreuzberg-dev/kreuzberg/tree/main/examples) - Complete working examples

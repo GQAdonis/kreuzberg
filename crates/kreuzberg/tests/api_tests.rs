@@ -964,3 +964,142 @@ async fn test_extract_default_mime_type() {
             || response.status() == StatusCode::INTERNAL_SERVER_ERROR
     );
 }
+
+/// Test size limits configuration with custom limits.
+#[tokio::test]
+async fn test_size_limits_custom_limits() {
+    use kreuzberg::api::{ApiSizeLimits, create_router_with_limits};
+
+    let config = ExtractionConfig::default();
+    let limits = ApiSizeLimits::from_mb(50, 50);
+    let app = create_router_with_limits(config, limits);
+
+    assert_eq!(limits.max_request_body_bytes, 50 * 1024 * 1024);
+    assert_eq!(limits.max_multipart_field_bytes, 50 * 1024 * 1024);
+
+    let boundary = "----boundary";
+    let file_content = "Test";
+
+    let body_content = format!(
+        "--{}\r\n\
+         Content-Disposition: form-data; name=\"files\"; filename=\"test.txt\"\r\n\
+         Content-Type: text/plain\r\n\
+         \r\n\
+         {}\r\n\
+         --{}--\r\n",
+        boundary, file_content, boundary
+    );
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/extract")
+                .header("content-type", format!("multipart/form-data; boundary={}", boundary))
+                .body(Body::from(body_content))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+/// Test size limits with asymmetric limits (different request vs field sizes).
+#[tokio::test]
+async fn test_size_limits_asymmetric() {
+    use kreuzberg::api::{ApiSizeLimits, create_router_with_limits};
+
+    let config = ExtractionConfig::default();
+    let limits = ApiSizeLimits::new(100 * 1024 * 1024, 50 * 1024 * 1024); // 100 MB total, 50 MB per file
+    let _app = create_router_with_limits(config, limits);
+
+    assert_eq!(limits.max_request_body_bytes, 100 * 1024 * 1024);
+    assert_eq!(limits.max_multipart_field_bytes, 50 * 1024 * 1024);
+}
+
+/// Test default size limits are 10 GB.
+#[test]
+fn test_default_size_limits_10gb() {
+    use kreuzberg::api::ApiSizeLimits;
+
+    let limits = ApiSizeLimits::default();
+
+    // Default should be 10 GB
+    assert_eq!(limits.max_request_body_bytes, 10 * 1024 * 1024 * 1024);
+    assert_eq!(limits.max_multipart_field_bytes, 10 * 1024 * 1024 * 1024);
+}
+
+/// Test ApiSizeLimits from_mb convenience method.
+#[test]
+fn test_api_size_limits_from_mb() {
+    use kreuzberg::api::ApiSizeLimits;
+
+    let limits = ApiSizeLimits::from_mb(100, 50);
+    assert_eq!(limits.max_request_body_bytes, 100 * 1024 * 1024);
+    assert_eq!(limits.max_multipart_field_bytes, 50 * 1024 * 1024);
+}
+
+/// Test ApiSizeLimits new method.
+#[test]
+fn test_api_size_limits_new() {
+    use kreuzberg::api::ApiSizeLimits;
+
+    let limits = ApiSizeLimits::new(1_000_000, 500_000);
+    assert_eq!(limits.max_request_body_bytes, 1_000_000);
+    assert_eq!(limits.max_multipart_field_bytes, 500_000);
+}
+
+/// Test extracting a file larger than 2MB (issue #248).
+///
+/// This test verifies that the API can handle files larger than Axum's old
+/// default multipart field limit of 2MB. The issue reported files >2MB being
+/// rejected with HTTP 400, which was due to Axum's default `DefaultBodyLimit`.
+///
+/// With the fix, we now explicitly set `DefaultBodyLimit::max()` to match our
+/// configured size limits (default 10 GB), allowing large file uploads.
+#[tokio::test]
+async fn test_extract_file_larger_than_2mb() {
+    let app = create_router(ExtractionConfig::default());
+
+    let boundary = "----boundary";
+    // Create a 3MB text file (larger than old 2MB Axum default limit)
+    let file_content = "A".repeat(3 * 1024 * 1024); // 3 MB
+
+    let body_content = format!(
+        "--{}\r\n\
+         Content-Disposition: form-data; name=\"files\"; filename=\"large.txt\"\r\n\
+         Content-Type: text/plain\r\n\
+         \r\n\
+         {}\r\n\
+         --{}--\r\n",
+        boundary, file_content, boundary
+    );
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/extract")
+                .header("content-type", format!("multipart/form-data; boundary={}", boundary))
+                .body(Body::from(body_content))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    // Should succeed with HTTP 200, not 400 or 413
+    assert_eq!(
+        response.status(),
+        StatusCode::OK,
+        "3MB file should be accepted. If this fails with 400 or 413, the size limit fix is not working correctly."
+    );
+
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    let results: Vec<serde_json::Value> = serde_json::from_slice(&body).unwrap();
+
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0]["mime_type"], "text/plain");
+    // Content should be extracted successfully
+    assert!(results[0]["content"].as_str().unwrap().contains("A"));
+}
