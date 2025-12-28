@@ -51,7 +51,7 @@
   </a>
 </div>
 
-A polyglot document intelligence framework with a Rust core. Extract text, metadata, and structured information from PDFs, Office documents, images, and 56 formats. Available for Rust, Python, TypeScript/Node.js, Ruby, Go, Java, C#, PHP, and Elixir—or use via CLI, REST API, or MCP server.
+A polyglot document intelligence framework with a Rust core. Extract text, metadata, and structured information from PDFs, Office documents, images, and 100+ formats. Available for Rust, Python, TypeScript/Node.js, Ruby, Go, Java, C#, PHP, and Elixir—or use via CLI, REST API, or MCP server.
 
 > Note - Kreuzberg v4.0.0 is in **Release Candidate** stage. Bugs and breaking changes are expected.
 > This is a pre-release version. Please test the library and [report any issues](https://github.com/kreuzberg-dev/kreuzberg/issues) you encounter.
@@ -59,7 +59,7 @@ A polyglot document intelligence framework with a Rust core. Extract text, metad
 ## Key Features
 
 - **Polyglot** – Native bindings for Rust, Python, TypeScript/Node.js, Ruby, Go, Java, C#, PHP, and Elixir
-- **56 file formats** – PDF, Office documents, images, HTML, XML, emails, archives, and more
+- **100+ file formats** – PDF, Office documents, images, HTML, XML, emails, archives, academic formats, and more
 - **OCR support** – Multiple backends (Tesseract, EasyOCR, PaddleOCR) with table extraction
 - **Flexible deployment** – Use as library, CLI tool, REST API server, or MCP server
 - **Memory efficient** – Streaming parsers for multi-GB files
@@ -106,43 +106,50 @@ To use embeddings functionality:
 
 ## Supported Formats
 
-### Documents & Productivity
+**100+ file formats** across 8 major categories with intelligent format detection and comprehensive metadata extraction.
 
-| Format | Extensions | Metadata | Tables | Images |
-|--------|-----------|----------|--------|--------|
-| PDF | `.pdf` | ✅ | ✅ | ✅ |
-| Word | `.docx`, `.doc` | ✅ | ✅ | ✅ |
-| Excel | `.xlsx`, `.xls`, `.ods` | ✅ | ✅ | ❌ |
-| PowerPoint | `.pptx`, `.ppt` | ✅ | ✅ | ✅ |
-| Rich Text | `.rtf` | ✅ | ❌ | ❌ |
-| EPUB | `.epub` | ✅ | ❌ | ❌ |
+### 📄 Office Documents
 
-### Images
+| Category | Formats | Capabilities |
+|----------|---------|--------------|
+| **Word Processing** | `.docx`, `.odt` | Full text, tables, images, metadata, styles |
+| **Spreadsheets** | `.xlsx`, `.xlsm`, `.xlsb`, `.xls`, `.xla`, `.xlam`, `.xltm`, `.ods` | Sheet data, formulas, cell metadata, charts |
+| **Presentations** | `.pptx`, `.ppt`, `.ppsx` | Slides, speaker notes, images, metadata |
+| **PDF** | `.pdf` | Text, tables, images, metadata, OCR support |
+| **eBooks** | `.epub`, `.fb2` | Chapters, metadata, embedded resources |
 
-All image formats support OCR: `.jpg`, `.jpeg`, `.png`, `.tiff`, `.tif`, `.bmp`, `.gif`, `.webp`, `.jp2`
+### 🖼️ Images (OCR-Enabled)
 
-### Web & Structured Data
+**Raster:** `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.bmp`, `.tiff`, `.tif`
+**Advanced:** `.jp2`, `.jpx`, `.jpm`, `.mj2`, `.pnm`, `.pbm`, `.pgm`, `.ppm`
+**Vector:** `.svg`
 
-| Format | Extensions | Features |
-|--------|-----------|----------|
-| HTML | `.html`, `.htm` | Metadata extraction, link preservation |
-| XML | `.xml` | Streaming parser for multi-GB files |
-| JSON | `.json` | Intelligent field detection |
-| YAML | `.yaml` | Structure preservation |
-| TOML | `.toml` | Configuration parsing |
+All image formats support OCR with table detection and metadata extraction (EXIF, dimensions, color space).
 
-### Email & Archives
+### 🌐 Web & Data
 
-| Format | Extensions | Features |
-|--------|-----------|----------|
-| Email | `.eml`, `.msg` | Full metadata, attachment extraction |
-| Archives | `.zip`, `.tar`, `.gz`, `.7z` | File listing, metadata |
+| Category | Formats | Features |
+|----------|---------|----------|
+| **Markup** | `.html`, `.htm`, `.xhtml`, `.xml`, `.svg` | DOM parsing, metadata (Open Graph, Twitter Card), link extraction |
+| **Structured Data** | `.json`, `.yaml`, `.yml`, `.toml`, `.csv`, `.tsv` | Schema detection, nested structures, validation |
+| **Text & Markdown** | `.txt`, `.md`, `.markdown`, `.rst`, `.org`, `.rtf` | CommonMark, GFM, reStructuredText, Org Mode |
 
-### Academic & Technical
+### 📧 Email & Archives
 
-LaTeX (`.tex`), BibTeX (`.bib`), Jupyter (`.ipynb`), reStructuredText (`.rst`), Org Mode (`.org`), Markdown (`.md`)
+| Category | Formats | Features |
+|----------|---------|----------|
+| **Email** | `.eml`, `.msg` | Headers, body (HTML/plain), attachments, threading |
+| **Archives** | `.zip`, `.tar`, `.tgz`, `.gz`, `.7z` | File listing, nested archives, metadata |
 
-**[Complete Format Documentation](https://kreuzberg.dev/reference/formats/)**
+### 🎓 Academic & Scientific
+
+| Category | Formats | Features |
+|----------|---------|----------|
+| **Citations** | `.bib`, `.biblatex`, `.ris`, `.enw`, `.csl` | Bibliography parsing, citation extraction |
+| **Scientific** | `.tex`, `.latex`, `.typst`, `.jats`, `.ipynb`, `.docbook` | LaTeX, Jupyter notebooks, PubMed JATS |
+| **Documentation** | `.opml`, `.pod`, `.mdoc`, `.troff` | Technical documentation formats |
+
+**[Complete Format Reference →](https://kreuzberg.dev/reference/formats/)**
 
 ## Key Features
 
