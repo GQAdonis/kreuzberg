@@ -693,9 +693,9 @@ function normalizePageConfig(pages?: PageExtractionConfig): NativeExtractionConf
 	}
 
 	const normalized: NativeExtractionConfig = {};
-	setIfDefined(normalized, "extract_pages", pages.extractPages);
-	setIfDefined(normalized, "insert_page_markers", pages.insertPageMarkers);
-	setIfDefined(normalized, "marker_format", pages.markerFormat);
+	setIfDefined(normalized, "extractPages", pages.extractPages);
+	setIfDefined(normalized, "insertPageMarkers", pages.insertPageMarkers);
+	setIfDefined(normalized, "markerFormat", pages.markerFormat);
 	return normalized;
 }
 
