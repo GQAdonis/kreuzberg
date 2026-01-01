@@ -202,6 +202,23 @@ runs:
           echo "✗ Cache MISS - Building FFI library from source"
         fi
 
+    # Clean stale fingerprints on partial cache hit
+    - name: Clean stale build artifacts on partial cache restore
+      if: steps.cache-restore.outputs.cache-hit != 'true' && steps.cache-restore.outputs.cache-matched-key != ''
+      shell: bash
+      env:
+        FFI_CRATE: ${{ inputs.ffi-crate }}
+      run: |
+        echo "⚠️  Partial cache restore detected - cleaning stale fingerprints"
+        echo "  Matched key: ${{ steps.cache-restore.outputs.cache-matched-key }}"
+        echo "  Expected key: ${{ steps.generate-cache-key.outputs.cache-key }}"
+
+        # Clean only the FFI crate to remove stale fingerprints
+        # This prevents Cargo from trying to validate outdated fingerprint files
+        cargo clean --package "$FFI_CRATE" || true
+
+        echo "✓ Cleaned stale artifacts for $FFI_CRATE"
+
     # Build if cache miss or skip-build-on-hit is false
     - name: Build FFI library
       id: build
