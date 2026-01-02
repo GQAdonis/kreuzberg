@@ -428,7 +428,7 @@ public class ImagesTest
     [Fact]
     public void ExtractImages_FromPdfWithoutImages_ReturnsEmptyOrNull()
     {
-        var pdfPath = NativeTestHelper.GetDocumentPath("pdfs/simple.pdf");
+        var pdfPath = NativeTestHelper.GetDocumentPath("pdf/simple.pdf");
         var config = new ExtractionConfig
         {
             Images = new ImageExtractionConfig
@@ -486,7 +486,7 @@ public class ImagesTest
         var files = new[]
         {
             NativeTestHelper.GetDocumentPath("pdfs/embedded_images_tables.pdf"),
-            NativeTestHelper.GetDocumentPath("pdfs/simple.pdf"),
+            NativeTestHelper.GetDocumentPath("pdf/simple.pdf"),
             NativeTestHelper.GetDocumentPath("documents/word_sample.docx")
         };
 
