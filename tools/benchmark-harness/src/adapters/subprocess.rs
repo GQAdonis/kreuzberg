@@ -299,6 +299,12 @@ impl FrameworkAdapter for SubprocessAdapter {
                 let resource_stats = ResourceMonitor::calculate_stats(&samples, &snapshots);
                 let actual_duration = start_time.elapsed();
 
+                let throughput = if actual_duration.as_secs_f64() > 0.0 {
+                    file_size as f64 / actual_duration.as_secs_f64()
+                } else {
+                    0.0
+                };
+
                 let framework_capabilities = FrameworkCapabilities {
                     ocr_support: Self::framework_supports_ocr(&self.name),
                     batch_support: self.supports_batch,
@@ -317,7 +323,7 @@ impl FrameworkAdapter for SubprocessAdapter {
                     metrics: PerformanceMetrics {
                         peak_memory_bytes: resource_stats.peak_memory_bytes,
                         avg_cpu_percent: resource_stats.avg_cpu_percent,
-                        throughput_bytes_per_sec: 0.0,
+                        throughput_bytes_per_sec: throughput,
                         p50_memory_bytes: resource_stats.p50_memory_bytes,
                         p95_memory_bytes: resource_stats.p95_memory_bytes,
                         p99_memory_bytes: resource_stats.p99_memory_bytes,
@@ -345,6 +351,12 @@ impl FrameworkAdapter for SubprocessAdapter {
         let parsed = match self.parse_output(&stdout) {
             Ok(value) => value,
             Err(e) => {
+                let throughput = if duration.as_secs_f64() > 0.0 {
+                    file_size as f64 / duration.as_secs_f64()
+                } else {
+                    0.0
+                };
+
                 let framework_capabilities = FrameworkCapabilities {
                     ocr_support: Self::framework_supports_ocr(&self.name),
                     batch_support: self.supports_batch,
@@ -363,7 +375,7 @@ impl FrameworkAdapter for SubprocessAdapter {
                     metrics: PerformanceMetrics {
                         peak_memory_bytes: resource_stats.peak_memory_bytes,
                         avg_cpu_percent: resource_stats.avg_cpu_percent,
-                        throughput_bytes_per_sec: 0.0,
+                        throughput_bytes_per_sec: throughput,
                         p50_memory_bytes: resource_stats.p50_memory_bytes,
                         p95_memory_bytes: resource_stats.p95_memory_bytes,
                         p99_memory_bytes: resource_stats.p99_memory_bytes,
@@ -518,6 +530,12 @@ impl FrameworkAdapter for SubprocessAdapter {
                             .unwrap_or("")
                             .to_string();
 
+                        let throughput = if avg_duration_per_file.as_secs_f64() > 0.0 {
+                            file_size as f64 / avg_duration_per_file.as_secs_f64()
+                        } else {
+                            0.0
+                        };
+
                         BenchmarkResult {
                             framework: self.name.clone(),
                             file_path: file_path.to_path_buf(),
@@ -530,7 +548,7 @@ impl FrameworkAdapter for SubprocessAdapter {
                             metrics: PerformanceMetrics {
                                 peak_memory_bytes: resource_stats.peak_memory_bytes,
                                 avg_cpu_percent: resource_stats.avg_cpu_percent,
-                                throughput_bytes_per_sec: 0.0,
+                                throughput_bytes_per_sec: throughput,
                                 p50_memory_bytes: resource_stats.p50_memory_bytes,
                                 p95_memory_bytes: resource_stats.p95_memory_bytes,
                                 p99_memory_bytes: resource_stats.p99_memory_bytes,
