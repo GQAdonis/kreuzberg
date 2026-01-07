@@ -374,6 +374,39 @@ def update_mix_exs(file_path: Path, version: str) -> Tuple[bool, str, str]:
     return False, old_version, version
 
 
+def update_mix_exs_testapp(file_path: Path, version: str) -> Tuple[bool, str, str]:
+    """
+    Update Elixir test app mix.exs file (version + dependency).
+
+    Returns: (changed, old_version, new_version)
+    """
+    content = file_path.read_text()
+    original_content = content
+
+    # Update version field
+    version_match = re.search(r'version:\s+"([^"]+)"', content)
+    old_version = version_match.group(1) if version_match else "NOT FOUND"
+
+    content = re.sub(
+        r'(version:\s+)"[^"]+"',
+        rf'\1"{version}"',
+        content
+    )
+
+    # Update kreuzberg dependency
+    content = re.sub(
+        r'(\{:kreuzberg,\s+"~>\s+)[^"]+("})',
+        rf'\g<1>{version}\g<2>',
+        content
+    )
+
+    if content != original_content:
+        file_path.write_text(content)
+        return True, old_version, version
+
+    return False, old_version, version
+
+
 def main():
     repo_root = get_repo_root()
 
@@ -573,7 +606,11 @@ def main():
 
         content = cargo_toml.read_text()
         if re.search(r'^version\s*=\s*"[^"]+"', content, re.MULTILINE):
-            if "version.workspace = true" not in content and "workspace = true" not in content:
+            # Check if version is using workspace inheritance
+            has_version_workspace = re.search(r'^\s*version\s*\.workspace\s*=\s*true', content, re.MULTILINE)
+            has_version_in_workspace_table = re.search(r'^\[package\].*?^\s*version\s*=.*?workspace\s*=\s*true', content, re.MULTILINE | re.DOTALL)
+
+            if not has_version_workspace and not has_version_in_workspace_table:
                 changed, old_ver, new_ver = update_cargo_toml(cargo_toml, version)
                 rel_path = cargo_toml.relative_to(repo_root)
 
@@ -629,6 +666,14 @@ def main():
         (
             repo_root / "tests/test_apps/rust/Cargo.toml",
             lambda p, v: update_cargo_toml(p, v)
+        ),
+        (
+            repo_root / "tests/test_apps/elixir/mix.exs",
+            lambda p, v: update_mix_exs_testapp(p, v)
+        ),
+        (
+            repo_root / "tests/test_apps/minimal-test/minimal.csproj",
+            lambda p, v: update_csproj(p, v)
         ),
     ]
 

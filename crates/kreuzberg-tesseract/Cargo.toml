@@ -26,8 +26,14 @@ image = { workspace = true }
 [build-dependencies]
 cc = { version = "^1.2.51", optional = true }
 cmake = { version = "0.1.57", optional = true }
-reqwest = { workspace = true, features = ["blocking", "rustls"], optional = true }
 zip = { version = "7.0.0", optional = true }
+
+# Use native-tls on Windows to avoid aws-lc-sys CMake build issues with MinGW
+[target.'cfg(windows)'.build-dependencies]
+reqwest = { workspace = true, features = ["blocking", "native-tls"], optional = true }
+
+[target.'cfg(not(windows))'.build-dependencies]
+reqwest = { workspace = true, features = ["blocking", "rustls"], optional = true }
 
 [features]
 default = ["static-linking"]

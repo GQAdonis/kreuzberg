@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.0-rc.28] - 2026-01-07
+
 ### Added
 
 #### API Server
@@ -35,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added new `serve_with_server_config()` function for proper config handling
 - **Clippy Warnings**: Fixed manual ceiling division by using stdlib `div_ceil()` method
 - **Integration Tests**: Added `#[cfg(feature = "api")]` gate to prevent import errors when api feature disabled
+- **Linting**: Resolved all clippy `field_reassign_with_default` warnings in test code
+- **ShellCheck**: Fixed all shell script warnings in Docker test script (variable declarations, quoting)
 
 #### Docker & CI
 - **Docker Test Script**: Fixed critical infinite recursion bug in `get_image_name()` function
