@@ -11,6 +11,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 This is the first stable release of Kreuzberg v4, a complete rewrite of the document intelligence library with a Rust core and polyglot bindings for Python, TypeScript, Ruby, PHP, Java, Go, C#, Elixir, and WebAssembly.
 
+### Added
+
+#### FFI & Language Bindings
+- **Python FFI Error Handling**: `get_last_error_code()` and `get_last_panic_context()` now properly call kreuzberg-ffi panic shield instead of returning stubs
+- **PHP Custom Extractor Support**: Metadata and tables from custom PHP extractors now flow through to extraction results via new `php_zval_to_json_value()` and `php_array_to_table()` helpers
+- **Dynamic Tesseract Language Discovery**: OCR backend now queries Tesseract installation for available languages instead of using hardcoded list, with lazy caching via `OnceLock` and fallback to default language set
+
+#### CI/CD
+- **ARM64 npm Indexing**: Enabled npm indexing wait step for linux-arm64-gnu packages in publish workflow
+
+### Fixed
+
+#### Test Alignment
+- **PHP Batch Error Handling**: Aligned PHP tests with other language bindings - batch operations now return error results in metadata instead of throwing exceptions (matching Ruby, TypeScript, Python behavior)
+- **PHP Embedding Tests**: Made embedding tests skip gracefully when ONNX runtime unavailable on ARM platforms
+- **PHP Image Extraction Tests**: Made image extraction tests skip when pdfium unavailable
+- **TypeScript OCR Tests**: Made OCR configuration tests skip gracefully when Tesseract initialization fails on Windows
+
 ### Removed
 
 #### Legacy Support
